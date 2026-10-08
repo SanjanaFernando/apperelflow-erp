@@ -1,0 +1,1 @@
+export const REJECTION_NOTE_MIN_LENGTH = 10;

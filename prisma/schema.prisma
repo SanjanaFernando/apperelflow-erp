@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  cutting_supervisor
+  cutting_verifier
+  sewing_supervisor
+}
+
+enum OrderStatus {
+  CUTTING_IN_PROGRESS
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  SEWING_IN_PROGRESS
+}
+
+enum ItemStatus {
+  GREEN
+  YELLOW
+  RED
+}
+
+enum Decision {
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  role          UserRole
+  fullName      String
+  createdAt     DateTime @default(now())
+
+  createdOrders     CuttingOrder[]
+  verificationLogs  VerificationLog[]
+  orderEvents       OrderEvent[]
+}
+
+model Recipe {
+  id             String          @id @default(cuid())
+  recipeCode     String          @unique
+  name           String
+  category       String
+  stdFabricYards Decimal
+  wastageCap     Decimal
+  components     RecipeComponent[]
+  cuttingOrders  CuttingOrder[]
+}
+
+model RecipeComponent {
+  id              String             @id @default(cuid())
+  recipe          Recipe             @relation(fields: [recipeId], references: [id])
+  recipeId        String
+  componentName   String
+  piecesPerGarment Int
+  imageUrl        String?
+
+  verificationItems VerificationItem[]
+}
+
+model CuttingOrder {
+  id               String            @id @default(cuid())
+  orderNo          String            @unique
+  recipe           Recipe            @relation(fields: [recipeId], references: [id])
+  recipeId         String
+  targetQty        Int
+  fabricRollId     String?
+  actualFabricYds  Decimal
+  status           OrderStatus       @default(CUTTING_IN_PROGRESS)
+  createdBy        User              @relation(fields: [createdById], references: [id])
+  createdById      String
+  rejectionCount   Int               @default(0)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  submittedAt      DateTime?
+
+  items            VerificationItem[]
+  logs             VerificationLog[]
+  events           OrderEvent[]
+}
+
+model VerificationItem {
+  id          String     @id @default(cuid())
+  order       CuttingOrder @relation(fields: [orderId], references: [id])
+  orderId     String
+  component   RecipeComponent @relation(fields: [componentId], references: [id])
+  componentId String
+  expectedQty Int
+  actualQty   Int?
+  status      ItemStatus?
+
+  @@unique([orderId, componentId])
+}
+
+model VerificationLog {
+  id                 String        @id @default(cuid())
+  order              CuttingOrder  @relation(fields: [orderId], references: [id])
+  orderId            String
+  verifier           User          @relation(fields: [verifierId], references: [id])
+  verifierId         String
+  decision           Decision
+  rejectionNote      String?
+  wastagePct         Decimal?
+  componentVariances Json?
+  expectedFabricYds  Decimal?
+  actualFabricYds    Decimal?
+  timestamp          DateTime      @default(now())
+}
+
+model OrderEvent {
+  id         String      @id @default(cuid())
+  order      CuttingOrder @relation(fields: [orderId], references: [id])
+  orderId    String
+  actor      User?       @relation(fields: [actorId], references: [id])
+  actorId    String?
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  at         DateTime    @default(now())
+}
