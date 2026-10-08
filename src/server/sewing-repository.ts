@@ -90,42 +90,45 @@ export async function getSewingActive() {
 
 export async function startSewing(orderId: string, actorId: string) {
   return prisma
-    .$transaction(async (transaction) => {
-      const existing = await transaction.cuttingOrder.findUnique({
-        where: { id: orderId },
-        select: { status: true },
-      });
-      if (!existing || existing.status !== "VERIFIED") {
-        throw new VerificationError(
-          "Only verified orders can enter sewing.",
-          "NOT_FOUND",
-        );
-      }
+    .$transaction(
+      async (transaction) => {
+        const existing = await transaction.cuttingOrder.findUnique({
+          where: { id: orderId },
+          select: { status: true },
+        });
+        if (!existing || existing.status !== "VERIFIED") {
+          throw new VerificationError(
+            "Only verified orders can enter sewing.",
+            "NOT_FOUND",
+          );
+        }
 
-      const updated = await transaction.cuttingOrder.updateMany({
-        where: { id: orderId, status: "VERIFIED" },
-        data: { status: "SEWING_IN_PROGRESS" },
-      });
-      if (updated.count !== 1) {
-        throw new VerificationError(
-          "The order changed before sewing started.",
-          "INVALID_TRANSITION",
-        );
-      }
+        const updated = await transaction.cuttingOrder.updateMany({
+          where: { id: orderId, status: "VERIFIED" },
+          data: { status: "SEWING_IN_PROGRESS" },
+        });
+        if (updated.count !== 1) {
+          throw new VerificationError(
+            "The order changed before sewing started.",
+            "INVALID_TRANSITION",
+          );
+        }
 
-      await transaction.orderEvent.create({
-        data: {
-          orderId,
-          actorId,
-          fromStatus: "VERIFIED",
-          toStatus: "SEWING_IN_PROGRESS",
-        },
-      });
+        await transaction.orderEvent.create({
+          data: {
+            orderId,
+            actorId,
+            fromStatus: "VERIFIED",
+            toStatus: "SEWING_IN_PROGRESS",
+          },
+        });
 
-      return transaction.cuttingOrder.findUnique({
-        where: { id: orderId },
-        ...sewingQuery,
-      });
-    })
+        return transaction.cuttingOrder.findUnique({
+          where: { id: orderId },
+          ...sewingQuery,
+        });
+      },
+      { maxWait: 15000, timeout: 30000 },
+    )
     .then((order) => (order ? toSewingOrder(order) : null));
 }

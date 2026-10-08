@@ -164,39 +164,42 @@ export async function createOrder(input: {
   });
   if (!recipe) throw new Error("INVALID_RECIPE");
 
-  const created = await prisma.$transaction(async (transaction) => {
-    const count = await transaction.cuttingOrder.count({
-      where: { orderNo: { startsWith: `CUT-${new Date().getFullYear()}-` } },
-    });
-    const orderNo = `CUT-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
-    return transaction.cuttingOrder.create({
-      data: {
-        orderNo,
-        recipeId: input.recipeId,
-        createdById: input.actorId,
-        targetQty: input.targetQty,
-        fabricRollId: input.fabricRollId,
-        actualFabricYds: input.actualFabricYds,
-        items: {
-          create: recipe.components.map((component) => ({
-            componentId: component.id,
-            expectedQty: computeExpected(
-              input.targetQty,
-              component.piecesPerGarment,
-            ),
-          })),
-        },
-        events: {
-          create: {
-            fromStatus: null,
-            toStatus: "CUTTING_IN_PROGRESS",
-            actorId: input.actorId,
+  const created = await prisma.$transaction(
+    async (transaction) => {
+      const count = await transaction.cuttingOrder.count({
+        where: { orderNo: { startsWith: `CUT-${new Date().getFullYear()}-` } },
+      });
+      const orderNo = `CUT-${new Date().getFullYear()}-${String(count + 1).padStart(4, "0")}`;
+      return transaction.cuttingOrder.create({
+        data: {
+          orderNo,
+          recipeId: input.recipeId,
+          createdById: input.actorId,
+          targetQty: input.targetQty,
+          fabricRollId: input.fabricRollId,
+          actualFabricYds: input.actualFabricYds,
+          items: {
+            create: recipe.components.map((component) => ({
+              componentId: component.id,
+              expectedQty: computeExpected(
+                input.targetQty,
+                component.piecesPerGarment,
+              ),
+            })),
+          },
+          events: {
+            create: {
+              fromStatus: null,
+              toStatus: "CUTTING_IN_PROGRESS",
+              actorId: input.actorId,
+            },
           },
         },
-      },
-      ...orderQuery,
-    });
-  });
+        ...orderQuery,
+      });
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
 
   return toOrderRecord(created);
 }
@@ -222,55 +225,61 @@ export async function listRecipes() {
 }
 
 export async function submitDatabaseOrder(orderId: string, actorId: string) {
-  const result = await prisma.$transaction(async (transaction) => {
-    const updated = await transaction.cuttingOrder.updateMany({
-      where: {
-        id: orderId,
-        createdById: actorId,
-        status: "CUTTING_IN_PROGRESS",
-      },
-      data: { status: "PENDING_VERIFICATION", submittedAt: new Date() },
-    });
-    if (updated.count !== 1) throw new Error("INVALID_TRANSITION");
-    await transaction.orderEvent.create({
-      data: {
-        orderId,
-        actorId,
-        fromStatus: "CUTTING_IN_PROGRESS",
-        toStatus: "PENDING_VERIFICATION",
-      },
-    });
-    return transaction.cuttingOrder.findUnique({
-      where: { id: orderId },
-      ...orderQuery,
-    });
-  });
+  const result = await prisma.$transaction(
+    async (transaction) => {
+      const updated = await transaction.cuttingOrder.updateMany({
+        where: {
+          id: orderId,
+          createdById: actorId,
+          status: "CUTTING_IN_PROGRESS",
+        },
+        data: { status: "PENDING_VERIFICATION", submittedAt: new Date() },
+      });
+      if (updated.count !== 1) throw new Error("INVALID_TRANSITION");
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          actorId,
+          fromStatus: "CUTTING_IN_PROGRESS",
+          toStatus: "PENDING_VERIFICATION",
+        },
+      });
+      return transaction.cuttingOrder.findUnique({
+        where: { id: orderId },
+        ...orderQuery,
+      });
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
   return toOrderRecord(result);
 }
 
 export async function recutDatabaseOrder(orderId: string, actorId: string) {
-  const result = await prisma.$transaction(async (transaction) => {
-    const updated = await transaction.cuttingOrder.updateMany({
-      where: { id: orderId, createdById: actorId, status: "REJECTED" },
-      data: { status: "CUTTING_IN_PROGRESS" },
-    });
-    if (updated.count !== 1) throw new Error("INVALID_TRANSITION");
-    await transaction.verificationItem.updateMany({
-      where: { orderId },
-      data: { actualQty: null, status: null },
-    });
-    await transaction.orderEvent.create({
-      data: {
-        orderId,
-        actorId,
-        fromStatus: "REJECTED",
-        toStatus: "CUTTING_IN_PROGRESS",
-      },
-    });
-    return transaction.cuttingOrder.findUnique({
-      where: { id: orderId },
-      ...orderQuery,
-    });
-  });
+  const result = await prisma.$transaction(
+    async (transaction) => {
+      const updated = await transaction.cuttingOrder.updateMany({
+        where: { id: orderId, createdById: actorId, status: "REJECTED" },
+        data: { status: "CUTTING_IN_PROGRESS" },
+      });
+      if (updated.count !== 1) throw new Error("INVALID_TRANSITION");
+      await transaction.verificationItem.updateMany({
+        where: { orderId },
+        data: { actualQty: null, status: null },
+      });
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          actorId,
+          fromStatus: "REJECTED",
+          toStatus: "CUTTING_IN_PROGRESS",
+        },
+      });
+      return transaction.cuttingOrder.findUnique({
+        where: { id: orderId },
+        ...orderQuery,
+      });
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
   return toOrderRecord(result);
 }

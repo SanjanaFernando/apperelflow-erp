@@ -74,103 +74,106 @@ export async function updateVerificationCount(
   componentId: string,
   actualQty: number,
 ) {
-  return prisma.$transaction(async (transaction) => {
-    const order = await transaction.cuttingOrder.findUnique({
-      where: { id: orderId },
-      select: { status: true },
-    });
-    if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
-    if (order.status !== "PENDING_VERIFICATION") {
-      throw new VerificationError(
-        "Counts can only be edited while verification is pending.",
-        "INVALID_TRANSITION",
-      );
-    }
+  return prisma.$transaction(
+    async (transaction) => {
+      const order = await transaction.cuttingOrder.findUnique({
+        where: { id: orderId },
+        select: { status: true },
+      });
+      if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
+      if (order.status !== "PENDING_VERIFICATION") {
+        throw new VerificationError(
+          "Counts can only be edited while verification is pending.",
+          "INVALID_TRANSITION",
+        );
+      }
 
-    const item = await transaction.verificationItem.findFirst({
-      where: { orderId, componentId },
-      select: { expectedQty: true },
-    });
-    if (!item) throw new VerificationError("Component not found.", "NOT_FOUND");
+      const item = await transaction.verificationItem.findFirst({
+        where: { orderId, componentId },
+        select: { expectedQty: true },
+      });
+      if (!item) throw new VerificationError("Component not found.", "NOT_FOUND");
 
-    const updated = await transaction.verificationItem.update({
-      where: { orderId_componentId: { orderId, componentId } },
-      data: {
-        actualQty,
-        status: classifyItem(item.expectedQty, actualQty),
-      },
-      include: { component: true },
-    });
-    return updated;
-  });
+      const updated = await transaction.verificationItem.update({
+        where: { orderId_componentId: { orderId, componentId } },
+        data: {
+          actualQty,
+          status: classifyItem(item.expectedQty, actualQty),
+        },
+        include: { component: true },
+      });
+      return updated;
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
 }
 
 export async function approveOrder(orderId: string, verifierId: string) {
-  return prisma.$transaction(async (transaction) => {
-    await lockOrder(transaction, orderId);
-    const order = await getLockedOrder(transaction, orderId);
-    if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
+  return prisma.$transaction(
+    async (transaction) => {
+      await lockOrder(transaction, orderId);
+      const order = await getLockedOrder(transaction, orderId);
+      if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
 
-    const blockers = canApprove(
-      order.items.map((item) => ({
-        componentName: item.component.componentName,
-        expected: item.expectedQty,
-        actual: item.actualQty,
-      })),
-    ).blockers;
-    if (order.items.length !== order.recipe.components.length) {
-      blockers.push("One or more recipe components are missing.");
-    }
-    if (blockers.length > 0) {
-      throw new VerificationError(
-        "Approval is blocked until every component is counted without shortage.",
-        "SHORTAGE_BLOCKED",
-        blockers,
-      );
-    }
+      const blockers = canApprove(
+        order.items.map((item) => ({
+          componentName: item.component.componentName,
+          expected: item.expectedQty,
+          actual: item.actualQty,
+        })),
+      ).blockers;
+      if (order.items.length !== order.recipe.components.length) {
+        blockers.push("One or more recipe components are missing.");
+      }
+      if (blockers.length > 0) {
+        throw new VerificationError(
+          "Approval is blocked until every component is counted without shortage.",
+          "SHORTAGE_BLOCKED",
+          blockers,
+        );
+      }
 
-    const expectedFabricYds =
-      order.targetQty * Number(order.recipe.stdFabricYards);
-    const actualFabricYds = Number(order.actualFabricYds);
-    const wastagePct = computeWastage(
-      actualFabricYds,
-      order.targetQty,
-      Number(order.recipe.stdFabricYards),
-    );
-    await transaction.verificationLog.create({
-      data: {
-        orderId,
-        verifierId,
-        decision: "APPROVED",
-        wastagePct,
-        expectedFabricYds,
+      const expectedFabricYds =
+        order.targetQty * Number(order.recipe.stdFabricYards);
+      const actualFabricYds = Number(order.actualFabricYds);
+      const wastagePct = computeWastage(
         actualFabricYds,
-        componentVariances: getVariances(order),
-      },
-    });
-    const updated = await transaction.cuttingOrder.updateMany({
-      where: { id: orderId, status: "PENDING_VERIFICATION" },
-      data: { status: "VERIFIED" },
-    });
-    if (updated.count !== 1) {
-      throw new VerificationError(
-        "The order changed before approval.",
-        "INVALID_TRANSITION",
+        order.targetQty,
+        Number(order.recipe.stdFabricYards),
       );
-    }
-    await transaction.orderEvent.create({
-      data: {
-        orderId,
-        actorId: verifierId,
-        fromStatus: "PENDING_VERIFICATION",
-        toStatus: "VERIFIED",
-      },
-    });
-    return transaction.cuttingOrder.findUnique({
-      where: { id: orderId },
-      ...orderQuery,
-    });
-  });
+      await transaction.verificationLog.create({
+        data: {
+          orderId,
+          verifierId,
+          decision: "APPROVED",
+          wastagePct,
+          expectedFabricYds,
+          actualFabricYds,
+          componentVariances: getVariances(order),
+        },
+      });
+      const updated = await transaction.cuttingOrder.updateMany({
+        where: { id: orderId, status: "PENDING_VERIFICATION" },
+        data: { status: "VERIFIED" },
+      });
+      if (updated.count !== 1) {
+        throw new VerificationError(
+          "The order changed before approval.",
+          "INVALID_TRANSITION",
+        );
+      }
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          actorId: verifierId,
+          fromStatus: "PENDING_VERIFICATION",
+          toStatus: "VERIFIED",
+        },
+      });
+      return { id: orderId, status: "VERIFIED" as PrismaOrderStatus };
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
 }
 
 export async function rejectOrder(
@@ -178,52 +181,52 @@ export async function rejectOrder(
   verifierId: string,
   rejectionNote: string,
 ) {
-  return prisma.$transaction(async (transaction) => {
-    await lockOrder(transaction, orderId);
-    const order = await getLockedOrder(transaction, orderId);
-    if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
+  return prisma.$transaction(
+    async (transaction) => {
+      await lockOrder(transaction, orderId);
+      const order = await getLockedOrder(transaction, orderId);
+      if (!order) throw new VerificationError("Order not found.", "NOT_FOUND");
 
-    const expectedFabricYds =
-      order.targetQty * Number(order.recipe.stdFabricYards);
-    await transaction.verificationLog.create({
-      data: {
-        orderId,
-        verifierId,
-        decision: "REJECTED",
-        rejectionNote,
-        wastagePct: computeWastage(
-          Number(order.actualFabricYds),
-          order.targetQty,
-          Number(order.recipe.stdFabricYards),
-        ),
-        expectedFabricYds,
-        actualFabricYds: Number(order.actualFabricYds),
-        componentVariances: getVariances(order),
-      },
-    });
-    const updated = await transaction.cuttingOrder.updateMany({
-      where: { id: orderId, status: "PENDING_VERIFICATION" },
-      data: { status: "REJECTED", rejectionCount: { increment: 1 } },
-    });
-    if (updated.count !== 1) {
-      throw new VerificationError(
-        "The order changed before rejection.",
-        "INVALID_TRANSITION",
-      );
-    }
-    await transaction.orderEvent.create({
-      data: {
-        orderId,
-        actorId: verifierId,
-        fromStatus: "PENDING_VERIFICATION",
-        toStatus: "REJECTED",
-      },
-    });
-    return transaction.cuttingOrder.findUnique({
-      where: { id: orderId },
-      ...orderQuery,
-    });
-  });
+      const expectedFabricYds =
+        order.targetQty * Number(order.recipe.stdFabricYards);
+      await transaction.verificationLog.create({
+        data: {
+          orderId,
+          verifierId,
+          decision: "REJECTED",
+          rejectionNote,
+          wastagePct: computeWastage(
+            Number(order.actualFabricYds),
+            order.targetQty,
+            Number(order.recipe.stdFabricYards),
+          ),
+          expectedFabricYds,
+          actualFabricYds: Number(order.actualFabricYds),
+          componentVariances: getVariances(order),
+        },
+      });
+      const updated = await transaction.cuttingOrder.updateMany({
+        where: { id: orderId, status: "PENDING_VERIFICATION" },
+        data: { status: "REJECTED", rejectionCount: { increment: 1 } },
+      });
+      if (updated.count !== 1) {
+        throw new VerificationError(
+          "The order changed before rejection.",
+          "INVALID_TRANSITION",
+        );
+      }
+      await transaction.orderEvent.create({
+        data: {
+          orderId,
+          actorId: verifierId,
+          fromStatus: "PENDING_VERIFICATION",
+          toStatus: "REJECTED",
+        },
+      });
+      return { id: orderId, status: "REJECTED" as PrismaOrderStatus };
+    },
+    { maxWait: 15000, timeout: 30000 },
+  );
 }
 
 export async function getVerificationHistory(orderId: string) {

@@ -49,6 +49,7 @@ export default function SewingPage() {
   const [tab, setTab] = useState<Tab>("ready");
   const [selected, setSelected] = useState<SewingOrder | null>(null);
   const [confirmStart, setConfirmStart] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -80,20 +81,29 @@ export default function SewingPage() {
   const orders = tab === "ready" ? ready : active;
 
   async function startOrder() {
-    if (!selected) return;
-    const response = await fetch(`/api/sewing/orders/${selected.id}/start`, {
-      method: "POST",
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error?.message ?? "Unable to start sewing.");
+    if (!selected || submitting) return;
+    setSubmitting(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/sewing/orders/${selected.id}/start`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error?.message ?? "Unable to start sewing.");
+        setConfirmStart(false);
+        return;
+      }
       setConfirmStart(false);
-      return;
+      setSelected(null);
+      setTab("active");
+      await loadQueue();
+    } catch {
+      setError("Network error while starting sewing.");
+      setConfirmStart(false);
+    } finally {
+      setSubmitting(false);
     }
-    setConfirmStart(false);
-    setSelected(null);
-    setTab("active");
-    await loadQueue();
   }
 
   if (loading) return <LoadingState label="Loading sewing floor" />;
@@ -406,16 +416,18 @@ export default function SewingPage() {
             </CardHeader>
             <CardContent className="flex justify-end gap-3">
               <Button
+                disabled={submitting}
                 className="border border-slate-300 bg-white text-slate-700"
                 onClick={() => setConfirmStart(false)}
               >
                 Cancel
               </Button>
               <Button
-                className="bg-indigo-700 text-white hover:bg-indigo-800"
+                disabled={submitting}
+                className="bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-50"
                 onClick={() => void startOrder()}
               >
-                Confirm start
+                {submitting ? "Starting..." : "Confirm start"}
               </Button>
             </CardContent>
           </Card>

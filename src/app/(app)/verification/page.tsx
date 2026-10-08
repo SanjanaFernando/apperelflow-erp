@@ -70,7 +70,9 @@ export default function VerificationPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [order, setOrder] = useState<VerificationOrder | null>(null);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [rejectError, setRejectError] = useState("");
   const [note, setNote] = useState("");
   const [showReject, setShowReject] = useState(false);
   const [history, setHistory] = useState<History | null>(null);
@@ -151,42 +153,62 @@ export default function VerificationPage() {
   }
 
   async function approve() {
-    if (!order || blockers.length > 0) return;
+    if (!order || blockers.length > 0 || submitting) return;
     setError("");
-    const response = await fetch(`/api/orders/${order.id}/approve`, {
-      method: "POST",
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error?.message ?? "Approval failed.");
-      return;
+    setSubmitting(true);
+    try {
+      const response = await fetch(`/api/orders/${order.id}/approve`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error?.message ?? "Approval failed.");
+        setSubmitting(false);
+        return;
+      }
+      await loadOrders();
+      setOrder(null);
+      setSelectedId(null);
+    } catch {
+      setError("Network request failed while approving order.");
+    } finally {
+      setSubmitting(false);
     }
-    await loadOrders();
-    setOrder(null);
-    setSelectedId(null);
   }
 
   async function reject() {
-    if (!order) return;
-    if (note.trim().length < 10) {
-      setError("Reason must be at least 10 characters.");
+    if (!order || submitting) return;
+    const trimmed = note.trim();
+    if (trimmed.length < 10) {
+      setRejectError("Reason must be at least 10 characters.");
       return;
     }
-    const response = await fetch(`/api/orders/${order.id}/reject`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setError(data.error?.message ?? "Rejection failed.");
-      return;
+    setSubmitting(true);
+    setRejectError("");
+    setError("");
+    try {
+      const response = await fetch(`/api/orders/${order.id}/reject`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ note: trimmed }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setRejectError(data.error?.message ?? "Rejection failed.");
+        setSubmitting(false);
+        return;
+      }
+      setShowReject(false);
+      setNote("");
+      setRejectError("");
+      await loadOrders();
+      setOrder(null);
+      setSelectedId(null);
+    } catch {
+      setRejectError("Network request failed while rejecting order.");
+    } finally {
+      setSubmitting(false);
     }
-    setShowReject(false);
-    setNote("");
-    await loadOrders();
-    setOrder(null);
-    setSelectedId(null);
   }
 
   async function openHistory() {
@@ -251,6 +273,23 @@ export default function VerificationPage() {
             </Button>
           </div>
         </header>
+
+        {error && (
+          <div
+            role="alert"
+            className="flex items-center justify-between rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-800"
+          >
+            <span>{error}</span>
+            <button
+              type="button"
+              aria-label="Dismiss error"
+              onClick={() => setError("")}
+              className="text-red-700 hover:text-red-900"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
           <Card className="h-fit">
@@ -447,19 +486,23 @@ export default function VerificationPage() {
               <Card>
                 <CardContent className="flex flex-wrap justify-end gap-3">
                   <Button
-                    className="border border-red-300 bg-white text-red-700 hover:bg-red-50"
-                    onClick={() => setShowReject(true)}
+                    disabled={submitting}
+                    className="border border-red-300 bg-white text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    onClick={() => {
+                      setRejectError("");
+                      setShowReject(true);
+                    }}
                   >
                     <AlertTriangle size={16} className="mr-2" />
                     Reject batch
                   </Button>
                   <Button
-                    disabled={blockers.length > 0}
-                    className="bg-indigo-700 text-white hover:bg-indigo-800"
+                    disabled={blockers.length > 0 || submitting}
+                    className="bg-indigo-700 text-white hover:bg-indigo-800 disabled:opacity-50"
                     onClick={() => void approve()}
                   >
                     <ShieldCheck size={16} className="mr-2" />
-                    Approve batch
+                    {submitting ? "Approving..." : "Approve batch"}
                   </Button>
                 </CardContent>
               </Card>
@@ -487,6 +530,7 @@ export default function VerificationPage() {
               </div>
               <Button
                 aria-label="Close rejection dialog"
+                disabled={submitting}
                 className="px-2 text-slate-500 hover:bg-slate-100"
                 onClick={() => setShowReject(false)}
               >
@@ -494,31 +538,45 @@ export default function VerificationPage() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-4">
+              {rejectError && (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-700"
+                >
+                  {rejectError}
+                </div>
+              )}
               <label htmlFor="rejection-note" className="text-sm font-medium">
                 Reason note
               </label>
               <Textarea
                 id="rejection-note"
                 value={note}
-                onChange={(event) => setNote(event.target.value)}
+                onChange={(event) => {
+                  setNote(event.target.value);
+                  if (rejectError) setRejectError("");
+                }}
                 placeholder="Describe the shortage or quality issue..."
                 aria-describedby="rejection-help"
+                disabled={submitting}
               />
               <p id="rejection-help" className="text-xs text-slate-500">
                 Minimum 10 characters. Current: {note.trim().length}
               </p>
               <div className="flex justify-end gap-3">
                 <Button
+                  disabled={submitting}
                   className="border border-slate-300 bg-white text-slate-700"
                   onClick={() => setShowReject(false)}
                 >
                   Cancel
                 </Button>
                 <Button
-                  className="bg-red-700 text-white hover:bg-red-800"
+                  disabled={submitting || note.trim().length < 10}
+                  className="bg-red-700 text-white hover:bg-red-800 disabled:opacity-50"
                   onClick={() => void reject()}
                 >
-                  Confirm rejection
+                  {submitting ? "Rejecting..." : "Confirm rejection"}
                 </Button>
               </div>
             </CardContent>

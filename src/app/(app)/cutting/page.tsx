@@ -64,6 +64,7 @@ export default function CuttingPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [actionOrderId, setActionOrderId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -159,16 +160,24 @@ export default function CuttingPage() {
   }
 
   async function transition(order: Order, action: "submit" | "recut") {
-    const response = await fetch(`/api/orders/${order.id}/${action}`, {
-      method: "POST",
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      setMessage(data.error?.message ?? "Unable to update the order.");
-      return;
+    setActionOrderId(order.id);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/orders/${order.id}/${action}`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setMessage(data.error?.message ?? "Unable to update the order.");
+        return;
+      }
+      setMessage(`${order.orderNo} updated successfully.`);
+      await loadData();
+    } catch {
+      setMessage("Network error while updating the order.");
+    } finally {
+      setActionOrderId(null);
     }
-    setMessage(`${order.orderNo} updated successfully.`);
-    await loadData();
   }
 
   if (loading) return <LoadingState label="Loading cutting floor" />;
@@ -297,19 +306,25 @@ export default function CuttingPage() {
                         <td className="px-5 py-4 text-right">
                           {order.status === "CUTTING_IN_PROGRESS" && (
                             <Button
-                              className="gap-1 border border-indigo-200 bg-indigo-50 px-3 text-indigo-800 hover:bg-indigo-100"
+                              disabled={actionOrderId === order.id}
+                              className="gap-1 border border-indigo-200 bg-indigo-50 px-3 text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
                               onClick={() => void transition(order, "submit")}
                             >
                               <Send size={14} />
-                              Submit
+                              {actionOrderId === order.id
+                                ? "Submitting..."
+                                : "Submit"}
                             </Button>
                           )}
                           {order.status === "REJECTED" && (
                             <Button
-                              className="border border-red-200 bg-red-50 px-3 text-red-800 hover:bg-red-100"
+                              disabled={actionOrderId === order.id}
+                              className="border border-red-200 bg-red-50 px-3 text-red-800 hover:bg-red-100 disabled:opacity-50"
                               onClick={() => void transition(order, "recut")}
                             >
-                              Re-cut
+                              {actionOrderId === order.id
+                                ? "Re-cutting..."
+                                : "Re-cut"}
                             </Button>
                           )}
                         </td>
