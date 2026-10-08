@@ -7,6 +7,7 @@ import {
   RefreshCw,
   Send,
   Scissors,
+  Search,
   Sparkles,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -62,6 +63,7 @@ export default function CuttingPage() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   async function loadData() {
     const [recipeResponse, orderResponse] = await Promise.all([
@@ -98,6 +100,17 @@ export default function CuttingPage() {
       })) ?? [],
     [recipe, targetQty],
   );
+  const filteredOrders = orders.filter((order) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      order.orderNo,
+      order.recipeCode,
+      order.fabricRollId,
+      order.status,
+      String(order.targetQty),
+    ].some((value) => value.toLowerCase().includes(query));
+  });
 
   async function createOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -211,6 +224,19 @@ export default function CuttingPage() {
               <p className="mt-1 text-sm text-slate-500">
                 Only your cutting orders are visible here.
               </p>
+              <div className="relative mt-4 max-w-md">
+                <Search
+                  className="pointer-events-none absolute left-3 top-2.5 text-slate-400"
+                  size={17}
+                />
+                <Input
+                  aria-label="Search cutting orders"
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search order, recipe, roll, status..."
+                  className="pl-9"
+                />
+              </div>
             </CardHeader>
             <CardContent className="overflow-x-auto p-0">
               <table className="w-full min-w-155 text-left text-sm">
@@ -224,7 +250,7 @@ export default function CuttingPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {orders.length === 0 ? (
+                  {filteredOrders.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
@@ -234,7 +260,7 @@ export default function CuttingPage() {
                       </td>
                     </tr>
                   ) : (
-                    orders.map((order) => (
+                    filteredOrders.map((order) => (
                       <tr key={order.id}>
                         <td className="px-5 py-4 font-semibold">
                           {order.orderNo}

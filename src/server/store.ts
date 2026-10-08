@@ -248,6 +248,27 @@ export function getOrdersForRole(
   return [];
 }
 
+export function getOrderMetricsForRole(
+  store: AppStore,
+  userId: string,
+  role: AppRole,
+) {
+  const orders = getOrdersForRole(store, userId, role);
+  return {
+    ordersInCutting: orders.filter(
+      (order) => order.status === "CUTTING_IN_PROGRESS",
+    ).length,
+    awaitingQc: orders.filter(
+      (order) => order.status === "PENDING_VERIFICATION",
+    ).length,
+    rejected: orders.filter((order) => order.status === "REJECTED").length,
+    verifiedToday: orders.filter(
+      (order) =>
+        order.status === "VERIFIED" || order.status === "SEWING_IN_PROGRESS",
+    ).length,
+  };
+}
+
 export function getOrderById(store: AppStore, orderId: string) {
   return store.orders.find((order) => order.id === orderId) ?? null;
 }

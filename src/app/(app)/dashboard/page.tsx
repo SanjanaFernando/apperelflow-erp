@@ -8,16 +8,12 @@ import {
   Factory,
   LockKeyhole,
   Shirt,
+  Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
-
-const metricCards = [
-  { label: "Orders in cutting", value: 18, icon: Factory },
-  { label: "Awaiting QC", value: 5, icon: ClipboardList },
-  { label: "Rejected", value: 2, icon: LockKeyhole },
-  { label: "Verified today", value: 12, icon: Activity },
-];
+import { Input } from "@/components/ui/input";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -29,17 +25,31 @@ export default function DashboardPage() {
       recipeCode: string;
       targetQty: number;
       status: string;
+      fabricRollId: string;
     }>
   >([]);
+  const [metrics, setMetrics] = useState({
+    ordersInCutting: 0,
+    awaitingQc: 0,
+    rejected: 0,
+    verifiedToday: 0,
+  });
+  const [selectedMetric, setSelectedMetric] = useState<
+    "cutting" | "qc" | "rejected" | "verified" | null
+  >(null);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [meResponse, ordersResponse] = await Promise.all([
-          fetch("/api/auth/me"),
-          fetch("/api/orders"),
-        ]);
+        const [meResponse, ordersResponse, metricsResponse] = await Promise.all(
+          [
+            fetch("/api/auth/me"),
+            fetch("/api/orders"),
+            fetch("/api/orders/metrics"),
+          ],
+        );
 
         if (!meResponse.ok) {
           router.push("/login");
@@ -52,6 +62,10 @@ export default function DashboardPage() {
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
           setOrders(ordersData.orders ?? []);
+        }
+        if (metricsResponse.ok) {
+          const metricsData = await metricsResponse.json();
+          setMetrics(metricsData.metrics);
         }
       } catch {
         router.push("/login");
@@ -79,6 +93,56 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const metricCards = [
+    {
+      key: "cutting" as const,
+      label: "Orders in cutting",
+      value: metrics.ordersInCutting,
+      icon: Factory,
+      statuses: ["CUTTING_IN_PROGRESS"],
+    },
+    {
+      key: "qc" as const,
+      label: "Awaiting QC",
+      value: metrics.awaitingQc,
+      icon: ClipboardList,
+      statuses: ["PENDING_VERIFICATION"],
+    },
+    {
+      key: "rejected" as const,
+      label: "Rejected",
+      value: metrics.rejected,
+      icon: LockKeyhole,
+      statuses: ["REJECTED"],
+    },
+    {
+      key: "verified" as const,
+      label: "Verified today",
+      value: metrics.verifiedToday,
+      icon: Activity,
+      statuses: ["VERIFIED", "SEWING_IN_PROGRESS"],
+    },
+  ];
+  const selectedMetricDefinition = metricCards.find(
+    (metric) => metric.key === selectedMetric,
+  );
+  const visibleOrders = selectedMetricDefinition
+    ? orders.filter((order) =>
+        selectedMetricDefinition.statuses.includes(order.status),
+      )
+    : orders;
+  const searchedOrders = visibleOrders.filter((order) => {
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      order.orderNo,
+      order.recipeCode,
+      order.fabricRollId,
+      order.status,
+      String(order.targetQty),
+    ].some((value) => value.toLowerCase().includes(query));
+  });
 
   return (
     <main className="woven-surface min-h-screen p-4 text-slate-900 sm:p-6">
@@ -141,10 +205,14 @@ export default function DashboardPage() {
         </header>
 
         <section className="grid gap-4 md:grid-cols-4">
-          {metricCards.map(({ label, value, icon: Icon }) => (
-            <div
+          {metricCards.map(({ key, label, value, icon: Icon }) => (
+            <button
               key={label}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
+              type="button"
+              onClick={() =>
+                setSelectedMetric(selectedMetric === key ? null : key)
+              }
+              className={`rounded-2xl border bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${selectedMetric === key ? "border-indigo-500 ring-2 ring-indigo-100" : "border-slate-200"}`}
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">{label}</p>
@@ -153,29 +221,68 @@ export default function DashboardPage() {
                 </div>
               </div>
               <p className="mt-4 text-3xl font-bold text-slate-900">{value}</p>
-            </div>
+              <p className="mt-2 text-xs font-medium text-indigo-700">
+                View matching orders
+              </p>
+            </button>
           ))}
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-slate-900">
-                Orders in work
-              </h2>
-              <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                Live
-              </span>
+              <div>
+                <h2 className="text-xl font-semibold text-slate-900">
+                  {selectedMetric
+                    ? metricCards.find(
+                        (metric) => metric.key === selectedMetric,
+                      )?.label
+                    : "Orders in work"}
+                </h2>
+                <p className="mt-1 text-sm text-slate-500">
+                  {searchedOrders.length} matching order
+                  {searchedOrders.length === 1 ? "" : "s"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                  Live
+                </span>
+                {selectedMetric && (
+                  <button
+                    type="button"
+                    aria-label="Clear metric filter"
+                    onClick={() => setSelectedMetric(null)}
+                    className="rounded-full p-1 text-slate-500 hover:bg-slate-100"
+                  >
+                    <X size={15} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="relative mb-4">
+              <Search
+                className="pointer-events-none absolute left-3 top-2.5 text-slate-400"
+                size={17}
+              />
+              <Input
+                aria-label="Search orders"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search order, recipe, roll, status..."
+                className="pl-9"
+              />
             </div>
 
             <div className="space-y-3">
-              {orders.length === 0 ? (
+              {searchedOrders.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
                   No orders yet. Create one from the supervisor flow to populate
                   the queue.
                 </div>
               ) : (
-                orders.map((order) => (
+                searchedOrders.map((order) => (
                   <div
                     key={order.id}
                     className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"

@@ -15,7 +15,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:harden": "prisma db execute --file prisma/migrations/20261008_phase3_integrity/migration.sql",
     "db:studio": "prisma studio",
-    "db:seed": "node prisma/seed.mjs"
+    "db:seed": "node prisma/seed.mjs",
+    "db:seed:demo": "node prisma/seed.mjs --reset-demo"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.0",

@@ -95,6 +95,35 @@ export async function listOrdersForRole(userId: string, role: AppRole) {
   return orders.map(toOrderSummary);
 }
 
+export async function getOrderMetricsForRole(userId: string, role: AppRole) {
+  const ownerFilter: Prisma.CuttingOrderWhereInput =
+    role === "cutting_supervisor" ? { createdById: userId } : {};
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const [ordersInCutting, awaitingQc, rejected, verifiedToday] =
+    await Promise.all([
+      prisma.cuttingOrder.count({
+        where: { ...ownerFilter, status: "CUTTING_IN_PROGRESS" },
+      }),
+      prisma.cuttingOrder.count({
+        where: { ...ownerFilter, status: "PENDING_VERIFICATION" },
+      }),
+      prisma.cuttingOrder.count({
+        where: { ...ownerFilter, status: "REJECTED" },
+      }),
+      prisma.verificationLog.count({
+        where: {
+          decision: "APPROVED",
+          timestamp: { gte: today },
+          order: ownerFilter,
+        },
+      }),
+    ]);
+
+  return { ordersInCutting, awaitingQc, rejected, verifiedToday };
+}
+
 export async function getOrderForRole(
   orderId: string,
   userId: string,

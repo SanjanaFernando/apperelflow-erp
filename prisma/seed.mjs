@@ -14,6 +14,7 @@ if (existsSync(envPath)) {
 const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const resetDemo = process.argv.includes("--reset-demo");
 
 const users = [
   [
@@ -113,6 +114,156 @@ for (const recipe of recipes) {
       },
     },
   });
+}
+
+if (resetDemo) {
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "OrderEvent" DISABLE TRIGGER "OrderEvent_immutable"',
+  );
+  await prisma.$executeRawUnsafe(
+    'ALTER TABLE "VerificationLog" DISABLE TRIGGER "VerificationLog_immutable"',
+  );
+  try {
+    await prisma.orderEvent.deleteMany();
+    await prisma.verificationLog.deleteMany();
+    await prisma.verificationItem.deleteMany();
+    await prisma.cuttingOrder.deleteMany();
+  } finally {
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "OrderEvent" ENABLE TRIGGER "OrderEvent_immutable"',
+    );
+    await prisma.$executeRawUnsafe(
+      'ALTER TABLE "VerificationLog" ENABLE TRIGGER "VerificationLog_immutable"',
+    );
+  }
+  console.log("Existing order workflow data cleared for demo seeding.");
+}
+
+const existingOrderCount = await prisma.cuttingOrder.count();
+if (existingOrderCount === 0) {
+  const blouseComponents = await prisma.recipeComponent.findMany({
+    where: { recipeId: "rec-bl01" },
+    orderBy: { id: "asc" },
+  });
+  const verifierId = "u-cutting-verifier";
+  const now = new Date();
+  const demoOrders = [
+    ...Array.from({ length: 18 }, (_, index) => ({
+      status: "CUTTING_IN_PROGRESS",
+      rejectionCount: 0,
+      index,
+    })),
+    ...Array.from({ length: 5 }, (_, index) => ({
+      status: "PENDING_VERIFICATION",
+      rejectionCount: 0,
+      index: index + 18,
+    })),
+    ...Array.from({ length: 2 }, (_, index) => ({
+      status: "REJECTED",
+      rejectionCount: 1,
+      index: index + 23,
+    })),
+    ...Array.from({ length: 12 }, (_, index) => ({
+      status: "VERIFIED",
+      rejectionCount: 0,
+      index: index + 25,
+    })),
+  ];
+
+  for (const demoOrder of demoOrders) {
+    const targetQty = 50;
+    const orderNo = `CUT-2026-DEMO-${String(demoOrder.index + 1).padStart(3, "0")}`;
+    const items = blouseComponents.map((component) => {
+      const expectedQty = targetQty * component.piecesPerGarment;
+      const isRejected = demoOrder.status === "REJECTED";
+      return {
+        componentId: component.id,
+        expectedQty,
+        actualQty:
+          demoOrder.status === "VERIFIED"
+            ? expectedQty
+            : isRejected
+              ? Math.max(0, expectedQty - 2)
+              : null,
+        status:
+          demoOrder.status === "VERIFIED" ? "GREEN" : isRejected ? "RED" : null,
+      };
+    });
+    const events = [
+      {
+        fromStatus: null,
+        toStatus: "CUTTING_IN_PROGRESS",
+        actorId: "u-cutting-supervisor",
+      },
+    ];
+    if (demoOrder.status !== "CUTTING_IN_PROGRESS") {
+      events.push({
+        fromStatus: "CUTTING_IN_PROGRESS",
+        toStatus: "PENDING_VERIFICATION",
+        actorId: "u-cutting-supervisor",
+      });
+    }
+    if (demoOrder.status === "REJECTED") {
+      events.push({
+        fromStatus: "PENDING_VERIFICATION",
+        toStatus: "REJECTED",
+        actorId: verifierId,
+      });
+    }
+    if (demoOrder.status === "VERIFIED") {
+      events.push({
+        fromStatus: "PENDING_VERIFICATION",
+        toStatus: "VERIFIED",
+        actorId: verifierId,
+      });
+    }
+
+    await prisma.cuttingOrder.create({
+      data: {
+        orderNo,
+        recipeId: "rec-bl01",
+        createdById: "u-cutting-supervisor",
+        targetQty,
+        fabricRollId: `ROLL-DEMO-${String(demoOrder.index + 1).padStart(3, "0")}`,
+        actualFabricYds: 90,
+        status: demoOrder.status,
+        rejectionCount: demoOrder.rejectionCount,
+        submittedAt: demoOrder.status === "CUTTING_IN_PROGRESS" ? null : now,
+        items: { create: items },
+        events: { create: events },
+        logs:
+          demoOrder.status === "VERIFIED"
+            ? {
+                create: {
+                  verifierId,
+                  decision: "APPROVED",
+                  wastagePct: 0,
+                  expectedFabricYds: 90,
+                  actualFabricYds: 90,
+                  componentVariances: [],
+                  timestamp: now,
+                },
+              }
+            : demoOrder.status === "REJECTED"
+              ? {
+                  create: {
+                    verifierId,
+                    decision: "REJECTED",
+                    rejectionNote: "Sleeves are short and require recutting.",
+                    wastagePct: 0,
+                    expectedFabricYds: 90,
+                    actualFabricYds: 90,
+                    componentVariances: [],
+                    timestamp: now,
+                  },
+                }
+              : undefined,
+      },
+    });
+  }
+  console.log(
+    "Demo order portfolio seeded: 18 cutting, 5 QC, 2 rejected, 12 verified.",
+  );
 }
 
 console.log("ApparelFlow seed complete.");

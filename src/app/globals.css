@@ -60,6 +60,10 @@ a {
   transition: all 160ms ease;
 }
 
+button:not(:disabled) {
+  cursor: pointer;
+}
+
 .woven-surface {
   background-color: #f8fafc;
   background-image:
