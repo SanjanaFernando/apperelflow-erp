@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   Activity,
   ClipboardList,
+  Eye,
   Factory,
   LockKeyhole,
+  Package,
   Search,
   ShieldCheck,
   X,
@@ -14,6 +16,10 @@ import {
 import { LoadingState } from "@/components/ui/loading-state";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
+import {
+  OrderDetailsModal,
+  type OrderSummaryInfo,
+} from "@/components/orders/order-details-modal";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -40,6 +46,9 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedOrder, setSelectedOrder] = useState<OrderSummaryInfo | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -287,27 +296,58 @@ export default function DashboardPage() {
 
           <div className="space-y-3">
             {searchedOrders.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-500">
-                No orders yet. Create one from the supervisor flow to populate
-                the queue.
+              <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-center text-sm text-slate-500">
+                No orders match your current filter.
               </div>
             ) : (
               paginatedOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedOrder(order)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedOrder(order);
+                    }
+                  }}
+                  className="group flex cursor-pointer items-center justify-between rounded-xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-indigo-300 hover:bg-indigo-50/30 hover:shadow-sm"
                 >
-                  <div>
-                    <p className="font-semibold text-slate-900">
-                      {order.orderNo}
-                    </p>
-                    <p className="text-sm text-slate-500">
-                      {order.recipeCode} · {order.targetQty} units
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-indigo-700 shadow-xs group-hover:border-indigo-200">
+                      <Package size={20} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-slate-900 group-hover:text-indigo-950">
+                          {order.orderNo}
+                        </p>
+                        <span className="font-mono text-xs text-slate-400">
+                          {order.fabricRollId}
+                        </span>
+                      </div>
+                      <p className="text-sm text-slate-500">
+                        {order.recipeCode} · {order.targetQty} units
+                      </p>
+                    </div>
                   </div>
-                  <span className="rounded-full bg-slate-200 px-2.5 py-1 text-xs font-medium text-slate-700">
-                    {order.status}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="rounded-full bg-slate-200/90 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                      {order.status.replaceAll("_", " ")}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedOrder(order);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 shadow-xs hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                    >
+                      <Eye size={13} />
+                      Details
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -331,6 +371,11 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+      <OrderDetailsModal
+        order={selectedOrder}
+        isOpen={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
+      />
     </main>
   );
 }

@@ -245,6 +245,12 @@ export function getOrdersForRole(
     );
   }
 
+  if (role === "sewing_supervisor") {
+    return store.orders.filter((order) =>
+      ["VERIFIED", "SEWING_IN_PROGRESS"].includes(order.status),
+    );
+  }
+
   return [];
 }
 

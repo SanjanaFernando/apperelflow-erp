@@ -74,18 +74,27 @@ export async function listOrdersForRole(userId: string, role: AppRole) {
   const where: Prisma.CuttingOrderWhereInput =
     role === "cutting_supervisor"
       ? { createdById: userId }
-      : role === "cutting_verifier"
+      : role === "sewing_supervisor"
         ? {
             status: {
               in: [
-                "PENDING_VERIFICATION",
                 "VERIFIED",
-                "REJECTED",
                 "SEWING_IN_PROGRESS",
               ] as PrismaOrderStatus[],
             },
           }
-        : { id: "__no_sewing_orders__" };
+        : role === "cutting_verifier"
+          ? {
+              status: {
+                in: [
+                  "PENDING_VERIFICATION",
+                  "VERIFIED",
+                  "REJECTED",
+                  "SEWING_IN_PROGRESS",
+                ] as PrismaOrderStatus[],
+              },
+            }
+          : { id: "__no_orders__" };
 
   const orders = await prisma.cuttingOrder.findMany({
     where,
@@ -145,6 +154,12 @@ export async function getOrderForRole(
       "REJECTED",
       "SEWING_IN_PROGRESS",
     ].includes(record.status)
+  ) {
+    return null;
+  }
+  if (
+    role === "sewing_supervisor" &&
+    !["VERIFIED", "SEWING_IN_PROGRESS"].includes(record.status)
   ) {
     return null;
   }

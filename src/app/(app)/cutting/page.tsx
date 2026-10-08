@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ClipboardPlus,
+  Eye,
   Factory,
   RefreshCw,
   Send,
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loading-state";
 import { BackButton } from "@/components/ui/back-button";
 import { Pagination } from "@/components/ui/pagination";
+import { OrderDetailsModal } from "@/components/orders/order-details-modal";
 import { orderFormSchema } from "@/lib/validators";
 
 type Recipe = {
@@ -68,6 +70,7 @@ export default function CuttingPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   async function loadData() {
     const [recipeResponse, orderResponse] = await Promise.all([
@@ -235,7 +238,7 @@ export default function CuttingPage() {
             {message}
           </div>
         )}
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
@@ -282,9 +285,15 @@ export default function CuttingPage() {
                     </tr>
                   ) : (
                     paginatedOrders.map((order) => (
-                      <tr key={order.id}>
+                      <tr key={order.id} className="hover:bg-slate-50/60">
                         <td className="px-5 py-4 font-semibold">
-                          {order.orderNo}
+                          <button
+                            type="button"
+                            onClick={() => setSelectedOrder(order)}
+                            className="text-left font-semibold text-indigo-950 hover:text-indigo-600 hover:underline"
+                          >
+                            {order.orderNo}
+                          </button>
                           <p className="text-xs font-normal text-slate-500">
                             {order.fabricRollId}
                           </p>
@@ -304,29 +313,39 @@ export default function CuttingPage() {
                           </Badge>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          {order.status === "CUTTING_IN_PROGRESS" && (
+                          <div className="flex items-center justify-end gap-2">
                             <Button
-                              disabled={actionOrderId === order.id}
-                              className="gap-1 border border-indigo-200 bg-indigo-50 px-3 text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
-                              onClick={() => void transition(order, "submit")}
+                              type="button"
+                              className="gap-1 border border-slate-300 bg-white px-2.5 text-xs text-slate-700 hover:bg-slate-50"
+                              onClick={() => setSelectedOrder(order)}
                             >
-                              <Send size={14} />
-                              {actionOrderId === order.id
-                                ? "Submitting..."
-                                : "Submit"}
+                              <Eye size={13} />
+                              Details
                             </Button>
-                          )}
-                          {order.status === "REJECTED" && (
-                            <Button
-                              disabled={actionOrderId === order.id}
-                              className="border border-red-200 bg-red-50 px-3 text-red-800 hover:bg-red-100 disabled:opacity-50"
-                              onClick={() => void transition(order, "recut")}
-                            >
-                              {actionOrderId === order.id
-                                ? "Re-cutting..."
-                                : "Re-cut"}
-                            </Button>
-                          )}
+                            {order.status === "CUTTING_IN_PROGRESS" && (
+                              <Button
+                                disabled={actionOrderId === order.id}
+                                className="gap-1 border border-indigo-200 bg-indigo-50 px-3 text-indigo-800 hover:bg-indigo-100 disabled:opacity-50"
+                                onClick={() => void transition(order, "submit")}
+                              >
+                                <Send size={14} />
+                                {actionOrderId === order.id
+                                  ? "Submitting..."
+                                  : "Submit"}
+                              </Button>
+                            )}
+                            {order.status === "REJECTED" && (
+                              <Button
+                                disabled={actionOrderId === order.id}
+                                className="border border-red-200 bg-red-50 px-3 text-red-800 hover:bg-red-100 disabled:opacity-50"
+                                onClick={() => void transition(order, "recut")}
+                              >
+                                {actionOrderId === order.id
+                                  ? "Re-cutting..."
+                                  : "Re-cut"}
+                              </Button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))
@@ -351,7 +370,7 @@ export default function CuttingPage() {
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="h-fit">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <ClipboardPlus size={18} className="text-indigo-700" />
@@ -491,6 +510,11 @@ export default function CuttingPage() {
           </Card>
         )}
       </div>
+      <OrderDetailsModal
+        order={selectedOrder}
+        isOpen={Boolean(selectedOrder)}
+        onClose={() => setSelectedOrder(null)}
+      />
     </main>
   );
 }

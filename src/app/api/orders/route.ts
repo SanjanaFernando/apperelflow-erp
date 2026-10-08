@@ -16,6 +16,7 @@ export async function GET(request: Request) {
   const authResult = await requireRole([
     "cutting_supervisor",
     "cutting_verifier",
+    "sewing_supervisor",
   ]);
   if (!authResult.ok) {
     return authResult.response;

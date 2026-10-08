@@ -11,6 +11,7 @@ export async function GET(
   const authResult = await requireRole([
     "cutting_supervisor",
     "cutting_verifier",
+    "sewing_supervisor",
   ]);
   if (!authResult.ok) {
     return authResult.response;
@@ -59,6 +60,16 @@ export async function GET(
       "REJECTED",
       "SEWING_IN_PROGRESS",
     ];
+    if (!allowedStatuses.includes(order.status)) {
+      return NextResponse.json(
+        { error: { code: "NOT_FOUND", message: "Order not found." } },
+        { status: 404 },
+      );
+    }
+  }
+
+  if (authResult.session.role === "sewing_supervisor") {
+    const allowedStatuses = ["VERIFIED", "SEWING_IN_PROGRESS"];
     if (!allowedStatuses.includes(order.status)) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Order not found." } },
