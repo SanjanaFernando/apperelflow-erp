@@ -36,7 +36,10 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadData() {
       try {
-        const meResponse = await fetch("/api/auth/me");
+        const [meResponse, ordersResponse] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/orders"),
+        ]);
 
         if (!meResponse.ok) {
           router.push("/login");
@@ -46,7 +49,6 @@ export default function DashboardPage() {
         const meData = await meResponse.json();
         setUser(meData.user);
 
-        const ordersResponse = await fetch("/api/orders");
         if (ordersResponse.ok) {
           const ordersData = await ordersResponse.json();
           setOrders(ordersData.orders ?? []);

@@ -14,8 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "ApparelFlow ERP",
-  description:
-    "Phase 0 foundation for the GateLine cutting verification terminal.",
+  description: "Foundation for the GateLine cutting verification terminal.",
 };
 
 export default function RootLayout({

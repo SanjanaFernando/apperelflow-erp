@@ -11,7 +11,14 @@ const orderQuery = {
   },
 } as const;
 
+const orderListQuery = {
+  include: { recipe: true },
+} as const;
+
 type DatabaseOrder = Prisma.CuttingOrderGetPayload<typeof orderQuery>;
+type DatabaseOrderSummary = Prisma.CuttingOrderGetPayload<
+  typeof orderListQuery
+>;
 
 function toOrderRecord(order: DatabaseOrder | null): OrderRecord | null {
   if (!order) return null;
@@ -45,6 +52,24 @@ function toOrderRecord(order: DatabaseOrder | null): OrderRecord | null {
   };
 }
 
+function toOrderSummary(order: DatabaseOrderSummary): OrderRecord {
+  return {
+    id: order.id,
+    orderNo: order.orderNo,
+    recipeId: order.recipeId,
+    recipeCode: order.recipe.recipeCode,
+    createdById: order.createdById,
+    targetQty: order.targetQty,
+    fabricRollId: order.fabricRollId ?? "",
+    actualFabricYds: Number(order.actualFabricYds),
+    status: order.status,
+    submittedAt: order.submittedAt?.toISOString() ?? null,
+    rejectionCount: order.rejectionCount,
+    items: [],
+    events: [],
+  };
+}
+
 export async function listOrdersForRole(userId: string, role: AppRole) {
   const where: Prisma.CuttingOrderWhereInput =
     role === "cutting_supervisor"
@@ -64,12 +89,10 @@ export async function listOrdersForRole(userId: string, role: AppRole) {
 
   const orders = await prisma.cuttingOrder.findMany({
     where,
-    ...orderQuery,
+    ...orderListQuery,
     orderBy: { createdAt: "desc" },
   });
-  return orders
-    .map(toOrderRecord)
-    .filter((order): order is OrderRecord => order !== null);
+  return orders.map(toOrderSummary);
 }
 
 export async function getOrderForRole(
