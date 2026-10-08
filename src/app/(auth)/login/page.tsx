@@ -64,23 +64,32 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-6 py-10 lg:grid-cols-[1.1fr_0.9fr]">
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
-          <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
+    <main className="woven-surface min-h-screen text-slate-900">
+      <div className="mx-auto grid min-h-screen max-w-7xl items-stretch gap-6 px-4 py-4 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:px-8 lg:py-8">
+        <section className="relative min-h-[560px] overflow-hidden rounded-[2rem] bg-slate-950 p-8 text-white ink-shadow sm:p-12">
+          <img
+            src="https://images.unsplash.com/photo-1523381210434-271e8be1f52b?auto=format&fit=crop&w=1600&q=85"
+            alt="Neatly arranged rolls of colorful textile fabric"
+            className="absolute inset-0 h-full w-full object-cover opacity-55"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/55 to-indigo-950/20" />
+          <div className="relative flex h-full flex-col justify-between">
+          <div className="mb-8 inline-flex w-fit items-center gap-2 rounded-full border border-white/25 bg-white/10 px-3 py-1 text-sm font-medium text-indigo-100 backdrop-blur">
             <UserRoundCog size={16} />
             ApparelFlow ERP — GateLine
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-slate-900">
+          <div>
+          <h1 className="max-w-2xl text-4xl font-bold tracking-tight text-white sm:text-6xl">
             Cutting gatekeeper terminal for live production verification.
           </h1>
-          <p className="mt-4 max-w-xl text-lg text-slate-600">
+          <p className="mt-5 max-w-xl text-lg leading-8 text-slate-200">
             Keep the sewing queue physically locked until every component is
             validated and approved by the cutting verifier.
           </p>
+          </div>
 
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="mt-10 grid gap-3 border-t border-white/20 pt-5 sm:grid-cols-3">
             {demoUsers.map(
               ({ role, email, password: demoPassword, icon: Icon }) => (
                 <button
@@ -90,20 +99,22 @@ export default function LoginPage() {
                     setEmail(email);
                     setPassword(demoPassword);
                   }}
-                  className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-indigo-300 hover:bg-indigo-50"
+                  className="rounded-2xl border border-white/15 bg-white/10 p-4 text-left backdrop-blur transition hover:border-indigo-200 hover:bg-white/20"
                 >
-                  <div className="mb-3 inline-flex rounded-xl bg-white p-2 text-indigo-700 shadow-sm">
+                  <div className="mb-3 inline-flex rounded-xl bg-white/90 p-2 text-indigo-700 shadow-sm">
                     <Icon size={18} />
                   </div>
-                  <p className="text-sm font-semibold text-slate-900">{role}</p>
-                  <p className="mt-2 text-xs text-slate-500">{email}</p>
+                  <p className="text-sm font-semibold text-white">{role}</p>
+                  <p className="mt-2 text-xs text-slate-300">{email}</p>
                 </button>
               ),
             )}
           </div>
+          </div>
         </section>
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
+        <section className="flex items-center rounded-[2rem] border border-slate-200 bg-white p-8 ink-shadow sm:p-12">
+          <div className="w-full">
           <div className="mb-6">
             <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-500">
               Sign in
@@ -162,6 +173,11 @@ export default function LoginPage() {
               {isSubmitting ? "Signing in…" : "Sign in"}
             </button>
           </form>
+          <div className="mt-8 flex items-center gap-3 border-t border-slate-200 pt-5 text-xs text-slate-500">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            Secure session · Supabase-backed production data
+          </div>
+          </div>
         </section>
       </div>
     </main>

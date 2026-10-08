@@ -82,18 +82,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-100 p-6 text-slate-900">
+    <main className="woven-surface min-h-screen p-4 text-slate-900 sm:p-6">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <header className="relative overflow-hidden rounded-2xl border border-indigo-900/20 bg-indigo-950 p-6 text-white shadow-xl sm:p-8">
+          <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full border-[32px] border-indigo-500/20" />
+          <div className="relative flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-slate-500">
-              Operational overview
+            <p className="text-sm uppercase tracking-[0.18em] text-indigo-200">
+              GateLine / Live operations
             </p>
-            <h1 className="mt-2 text-3xl font-bold">GateLine dashboard</h1>
+            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Production control room</h1>
+            <p className="mt-2 max-w-xl text-sm text-indigo-100">Track every batch from cutting floor to sewing release.</p>
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="rounded-xl bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700">
+            <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium text-indigo-100 backdrop-blur">
               {user.role}
             </div>
             {user.role === "cutting_verifier" && (
@@ -123,13 +126,14 @@ export default function DashboardPage() {
                 Open cutting floor
               </a>
             )}
-            <button
+              <button
               type="button"
               onClick={handleLogout}
-              className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+                className="rounded-xl border border-white/20 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-indigo-50"
             >
               Log out
             </button>
+          </div>
           </div>
         </header>
 
@@ -137,7 +141,7 @@ export default function DashboardPage() {
           {metricCards.map(({ label, value, icon: Icon }) => (
             <div
               key={label}
-              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm"
+              className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm text-slate-500">{label}</p>
