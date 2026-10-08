@@ -10,6 +10,7 @@ import {
   Shirt,
   ShieldCheck,
 } from "lucide-react";
+import { LoadingState } from "@/components/ui/loading-state";
 
 const metricCards = [
   { label: "Orders in cutting", value: 18, icon: Factory },
@@ -66,11 +67,7 @@ export default function DashboardPage() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-100 p-8 text-slate-700">
-        Loading dashboard…
-      </div>
-    );
+    return <LoadingState label="Loading production control room" />;
   }
 
   if (!user) {
@@ -87,53 +84,57 @@ export default function DashboardPage() {
         <header className="relative overflow-hidden rounded-2xl border border-indigo-900/20 bg-indigo-950 p-6 text-white shadow-xl sm:p-8">
           <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full border-[32px] border-indigo-500/20" />
           <div className="relative flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <p className="text-sm uppercase tracking-[0.18em] text-indigo-200">
-              GateLine / Live operations
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Production control room</h1>
-            <p className="mt-2 max-w-xl text-sm text-indigo-100">Track every batch from cutting floor to sewing release.</p>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium text-indigo-100 backdrop-blur">
-              {user.role}
+            <div>
+              <p className="text-sm uppercase tracking-[0.18em] text-indigo-200">
+                GateLine / Live operations
+              </p>
+              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">
+                Production control room
+              </h1>
+              <p className="mt-2 max-w-xl text-sm text-indigo-100">
+                Track every batch from cutting floor to sewing release.
+              </p>
             </div>
-            {user.role === "cutting_verifier" && (
-              <a
-                href="/verification"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
-              >
-                <ShieldCheck size={16} />
-                Open QC terminal
-              </a>
-            )}
-            {user.role === "sewing_supervisor" && (
-              <a
-                href="/sewing"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
-              >
-                <Factory size={16} />
-                Open sewing floor
-              </a>
-            )}
-            {user.role === "cutting_supervisor" && (
-              <a
-                href="/cutting"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
-              >
-                <Factory size={16} />
-                Open cutting floor
-              </a>
-            )}
+
+            <div className="flex items-center gap-4">
+              <div className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm font-medium text-indigo-100 backdrop-blur">
+                {user.role}
+              </div>
+              {user.role === "cutting_verifier" && (
+                <a
+                  href="/verification"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
+                >
+                  <ShieldCheck size={16} />
+                  Open QC terminal
+                </a>
+              )}
+              {user.role === "sewing_supervisor" && (
+                <a
+                  href="/sewing"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
+                >
+                  <Factory size={16} />
+                  Open sewing floor
+                </a>
+              )}
+              {user.role === "cutting_supervisor" && (
+                <a
+                  href="/cutting"
+                  className="inline-flex items-center gap-2 rounded-xl bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800"
+                >
+                  <Factory size={16} />
+                  Open cutting floor
+                </a>
+              )}
               <button
-              type="button"
-              onClick={handleLogout}
+                type="button"
+                onClick={handleLogout}
                 className="rounded-xl border border-white/20 bg-white px-3 py-2 text-sm font-medium text-slate-800 hover:bg-indigo-50"
-            >
-              Log out
-            </button>
-          </div>
+              >
+                Log out
+              </button>
+            </div>
           </div>
         </header>
 

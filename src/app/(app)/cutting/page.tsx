@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoadingState } from "@/components/ui/loading-state";
+import { BackButton } from "@/components/ui/back-button";
 import { orderFormSchema } from "@/lib/validators";
 
 type Recipe = {
@@ -144,12 +146,7 @@ export default function CuttingPage() {
     await loadData();
   }
 
-  if (loading)
-    return (
-      <main className="min-h-screen bg-slate-100 p-8 text-slate-700">
-        Loading cutting floor...
-      </main>
-    );
+  if (loading) return <LoadingState label="Loading cutting floor" />;
   if (message === "Not permitted for your role.")
     return (
       <main className="min-h-screen bg-slate-100 p-8 text-slate-900">
@@ -167,28 +164,34 @@ export default function CuttingPage() {
   return (
     <main className="min-h-screen bg-slate-100 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-700">
-              <Scissors size={18} />
-              <p className="text-sm font-semibold uppercase tracking-[0.18em]">
-                GateLine / Cutting floor
-              </p>
+        <header className="relative overflow-hidden rounded-2xl border border-indigo-900/20 bg-indigo-950 p-6 text-white shadow-xl sm:p-8">
+          <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full border-[32px] border-indigo-500/20" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <BackButton />
+              <div className="text-white">
+                <div className="flex items-center gap-2 text-indigo-200">
+                  <Scissors size={18} />
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em]">
+                    GateLine / Cutting floor
+                  </p>
+                </div>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight">
+                  Production orders
+                </h1>
+                <p className="mt-1 text-indigo-100">
+                  Create a batch, verify the multiplier, then release it to QC.
+                </p>
+              </div>
             </div>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">
-              Production orders
-            </h1>
-            <p className="mt-1 text-slate-600">
-              Create a batch, verify the multiplier, then release it to QC.
-            </p>
+            <Button
+              className="gap-2 border border-white/20 bg-white text-slate-800 hover:bg-indigo-50"
+              onClick={() => void loadData()}
+            >
+              <RefreshCw size={16} />
+              Refresh orders
+            </Button>
           </div>
-          <Button
-            className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            onClick={() => void loadData()}
-          >
-            <RefreshCw size={16} />
-            Refresh orders
-          </Button>
         </header>
         {message && (
           <div

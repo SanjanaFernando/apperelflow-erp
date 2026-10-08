@@ -14,6 +14,8 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { LoadingState } from "@/components/ui/loading-state";
+import { BackButton } from "@/components/ui/back-button";
 
 type SewingOrder = {
   id: string;
@@ -94,12 +96,7 @@ export default function SewingPage() {
     await loadQueue();
   }
 
-  if (loading)
-    return (
-      <main className="min-h-screen bg-slate-100 p-8 text-slate-700">
-        Loading sewing floor...
-      </main>
-    );
+  if (loading) return <LoadingState label="Loading sewing floor" />;
   if (error === "Not permitted for your role.")
     return (
       <main className="min-h-screen bg-slate-100 p-8 text-slate-900">
@@ -117,28 +114,34 @@ export default function SewingPage() {
   return (
     <main className="min-h-screen bg-slate-100 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 text-indigo-700">
-              <Factory size={18} />
-              <p className="text-sm font-semibold uppercase tracking-[0.18em]">
-                GateLine / Sewing floor
-              </p>
+        <header className="relative overflow-hidden rounded-2xl border border-indigo-900/20 bg-indigo-950 p-6 text-white shadow-xl sm:p-8">
+          <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full border-[32px] border-indigo-500/20" />
+          <div className="relative flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <BackButton />
+              <div>
+                <div className="flex items-center gap-2 text-indigo-200">
+                  <Factory size={18} />
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em]">
+                    GateLine / Sewing floor
+                  </p>
+                </div>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight">
+                  Assembly queue
+                </h1>
+                <p className="mt-1 text-indigo-100">
+                  Only QC-verified batches appear here.
+                </p>
+              </div>
             </div>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">
-              Assembly queue
-            </h1>
-            <p className="mt-1 text-slate-600">
-              Only QC-verified batches appear here.
-            </p>
+            <Button
+              className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              onClick={() => void loadQueue()}
+            >
+              <RefreshCw size={16} />
+              Refresh floor
+            </Button>
           </div>
-          <Button
-            className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            onClick={() => void loadQueue()}
-          >
-            <RefreshCw size={16} />
-            Refresh floor
-          </Button>
         </header>
 
         {error && (

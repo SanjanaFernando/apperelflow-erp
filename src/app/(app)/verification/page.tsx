@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { LoadingState } from "@/components/ui/loading-state";
+import { BackButton } from "@/components/ui/back-button";
 import { Textarea } from "@/components/ui/textarea";
 import { classifyItem, computeWastage } from "@/server/domain/verification";
 
@@ -196,12 +198,7 @@ export default function VerificationPage() {
     }
   }
 
-  if (loading)
-    return (
-      <main className="min-h-screen bg-slate-100 p-8 text-slate-700">
-        Loading verification terminal...
-      </main>
-    );
+  if (loading) return <LoadingState label="Loading verification terminal" />;
   if (error === "Not permitted for your role.")
     return (
       <main className="min-h-screen bg-slate-100 p-8 text-slate-900">
@@ -227,25 +224,32 @@ export default function VerificationPage() {
   return (
     <main className="min-h-screen bg-slate-100 p-4 text-slate-900 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-700">
-              GateLine / Quality control
-            </p>
-            <h1 className="mt-2 text-3xl font-bold tracking-tight">
-              Verifier terminal
-            </h1>
-            <p className="mt-1 text-slate-600">
-              Every shortage blocks approval. Overages are recorded for review.
-            </p>
+        <header className="relative overflow-hidden rounded-2xl border border-indigo-900/20 bg-indigo-950 p-6 text-white shadow-xl sm:p-8">
+          <div className="absolute -right-20 -top-32 h-72 w-72 rounded-full border-[32px] border-indigo-500/20" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <BackButton />
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.18em] text-indigo-200">
+                  GateLine / Quality control
+                </p>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight">
+                  Verifier terminal
+                </h1>
+                <p className="mt-1 text-indigo-100">
+                  Every shortage blocks approval. Overages are recorded for
+                  review.
+                </p>
+              </div>
+            </div>
+            <Button
+              className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              onClick={() => void loadOrders()}
+            >
+              <RefreshCw size={16} />
+              Refresh inbox
+            </Button>
           </div>
-          <Button
-            className="gap-2 border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
-            onClick={() => void loadOrders()}
-          >
-            <RefreshCw size={16} />
-            Refresh inbox
-          </Button>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
