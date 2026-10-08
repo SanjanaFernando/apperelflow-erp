@@ -86,7 +86,10 @@ export const orderCreateSchema = z.object({
     .number()
     .positive()
     .max(999999)
-    .refine((value) => Number.isInteger(value * 100), "Use at most 2 decimal places."),
+    .refine(
+      (value) => Number.isInteger(value * 100),
+      "Use at most 2 decimal places.",
+    ),
   status: z.string().optional(),
 });
 

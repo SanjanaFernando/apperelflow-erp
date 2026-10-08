@@ -79,11 +79,11 @@ read-only verification history.
 
 ## Application routes
 
-| Route | Role | Purpose |
-| --- | --- | --- |
-| `/cutting` | `cutting_supervisor` | Create, submit, and re-cut orders |
-| `/verification` | `cutting_verifier` | Count components and approve/reject batches |
-| `/sewing` | `sewing_supervisor` | Inspect approved batches and start assembly |
+| Route           | Role                 | Purpose                                     |
+| --------------- | -------------------- | ------------------------------------------- |
+| `/cutting`      | `cutting_supervisor` | Create, submit, and re-cut orders           |
+| `/verification` | `cutting_verifier`   | Count components and approve/reject batches |
+| `/sewing`       | `sewing_supervisor`  | Inspect approved batches and start assembly |
 
 The API keeps the same boundaries: `/api/orders` is unavailable to sewing,
 verification actions are verifier-only, and sewing queries accept no client

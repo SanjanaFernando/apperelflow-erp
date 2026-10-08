@@ -16,9 +16,27 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 const users = [
-  ["u-cutting-supervisor", "supervisor@apparelflow.demo", "cutting_supervisor", "Ava Chen", "Supervisor#2026"],
-  ["u-cutting-verifier", "verifier@apparelflow.demo", "cutting_verifier", "Milo Ortiz", "Verifier#2026"],
-  ["u-sewing-supervisor", "sewing@apparelflow.demo", "sewing_supervisor", "Nia Patel", "Sewing#2026"],
+  [
+    "u-cutting-supervisor",
+    "supervisor@apparelflow.demo",
+    "cutting_supervisor",
+    "Ava Chen",
+    "Supervisor#2026",
+  ],
+  [
+    "u-cutting-verifier",
+    "verifier@apparelflow.demo",
+    "cutting_verifier",
+    "Milo Ortiz",
+    "Verifier#2026",
+  ],
+  [
+    "u-sewing-supervisor",
+    "sewing@apparelflow.demo",
+    "sewing_supervisor",
+    "Nia Patel",
+    "Sewing#2026",
+  ],
 ];
 
 const recipes = [
@@ -29,7 +47,13 @@ const recipes = [
     category: "Topwear",
     stdFabricYards: 1.8,
     wastageCap: 5,
-    components: [["cmp-bl01-front", "Front Body", 1], ["cmp-bl01-back", "Back Body", 1], ["cmp-bl01-sleeves", "Sleeves", 2], ["cmp-bl01-collar", "Collar & Stand", 1], ["cmp-bl01-cuffs", "Cuffs", 2]],
+    components: [
+      ["cmp-bl01-front", "Front Body", 1],
+      ["cmp-bl01-back", "Back Body", 1],
+      ["cmp-bl01-sleeves", "Sleeves", 2],
+      ["cmp-bl01-collar", "Collar & Stand", 1],
+      ["cmp-bl01-cuffs", "Cuffs", 2],
+    ],
   },
   {
     id: "rec-ct02",
@@ -38,7 +62,13 @@ const recipes = [
     category: "Topwear",
     stdFabricYards: 1.1,
     wastageCap: 8,
-    components: [["cmp-ct02-front", "Front Chest", 1], ["cmp-ct02-back", "Back Support", 1], ["cmp-ct02-neck", "Neck Binding", 1], ["cmp-ct02-hem", "Hem Elastic Casing", 1], ["cmp-ct02-side", "Side Strap Accents", 2]],
+    components: [
+      ["cmp-ct02-front", "Front Chest", 1],
+      ["cmp-ct02-back", "Back Support", 1],
+      ["cmp-ct02-neck", "Neck Binding", 1],
+      ["cmp-ct02-hem", "Hem Elastic Casing", 1],
+      ["cmp-ct02-side", "Side Strap Accents", 2],
+    ],
   },
 ];
 
@@ -46,14 +76,25 @@ for (const [id, email, role, fullName, password] of users) {
   await prisma.user.upsert({
     where: { email },
     update: { role, fullName, passwordHash: await bcrypt.hash(password, 12) },
-    create: { id, email, role, fullName, passwordHash: await bcrypt.hash(password, 12) },
+    create: {
+      id,
+      email,
+      role,
+      fullName,
+      passwordHash: await bcrypt.hash(password, 12),
+    },
   });
 }
 
 for (const recipe of recipes) {
   await prisma.recipe.upsert({
     where: { recipeCode: recipe.recipeCode },
-    update: { name: recipe.name, category: recipe.category, stdFabricYards: recipe.stdFabricYards, wastageCap: recipe.wastageCap },
+    update: {
+      name: recipe.name,
+      category: recipe.category,
+      stdFabricYards: recipe.stdFabricYards,
+      wastageCap: recipe.wastageCap,
+    },
     create: {
       id: recipe.id,
       recipeCode: recipe.recipeCode,
@@ -61,7 +102,15 @@ for (const recipe of recipes) {
       category: recipe.category,
       stdFabricYards: recipe.stdFabricYards,
       wastageCap: recipe.wastageCap,
-      components: { create: recipe.components.map(([id, componentName, piecesPerGarment]) => ({ id, componentName, piecesPerGarment })) },
+      components: {
+        create: recipe.components.map(
+          ([id, componentName, piecesPerGarment]) => ({
+            id,
+            componentName,
+            piecesPerGarment,
+          }),
+        ),
+      },
     },
   });
 }

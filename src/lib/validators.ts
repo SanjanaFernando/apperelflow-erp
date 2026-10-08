@@ -36,5 +36,8 @@ export const orderFormSchema = z.object({
   actualFabricYds: z.coerce
     .number()
     .positive("Fabric usage must be greater than zero.")
-    .refine((value) => Number.isInteger(value * 100), "Use at most 2 decimal places."),
+    .refine(
+      (value) => Number.isInteger(value * 100),
+      "Use at most 2 decimal places.",
+    ),
 });
