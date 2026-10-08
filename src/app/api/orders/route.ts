@@ -24,26 +24,30 @@ export async function GET(request: Request) {
   const store = getAppStore();
   const url = new URL(request.url);
   const statusFilter = url.searchParams.get("status");
-  if (isDatabaseConfigured()) {
-    const orders = await listOrdersForRole(
-      authResult.session.sub,
-      authResult.session.role,
-    );
+  const rawOrders = isDatabaseConfigured()
+    ? await listOrdersForRole(authResult.session.sub, authResult.session.role)
+    : getOrdersForRole(store, authResult.session.sub, authResult.session.role);
+
+  const filtered = statusFilter
+    ? rawOrders.filter((order) => order.status === statusFilter)
+    : rawOrders;
+
+  const limitParam = url.searchParams.get("limit");
+  const pageParam = url.searchParams.get("page");
+  if (limitParam) {
+    const limit = Math.max(1, parseInt(limitParam, 10) || 10);
+    const page = Math.max(1, parseInt(pageParam || "1", 10) || 1);
+    const startIndex = (page - 1) * limit;
     return NextResponse.json({
-      orders: statusFilter
-        ? orders.filter((order) => order.status === statusFilter)
-        : orders,
+      orders: filtered.slice(startIndex, startIndex + limit),
+      pagination: {
+        page,
+        limit,
+        total: filtered.length,
+        totalPages: Math.max(1, Math.ceil(filtered.length / limit)),
+      },
     });
   }
-
-  const orders = getOrdersForRole(
-    store,
-    authResult.session.sub,
-    authResult.session.role,
-  );
-  const filtered = statusFilter
-    ? orders.filter((order) => order.status === statusFilter)
-    : orders;
 
   return NextResponse.json({ orders: filtered });
 }

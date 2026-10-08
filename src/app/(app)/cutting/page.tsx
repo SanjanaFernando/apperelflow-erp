@@ -18,6 +18,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoadingState } from "@/components/ui/loading-state";
 import { BackButton } from "@/components/ui/back-button";
+import { Pagination } from "@/components/ui/pagination";
 import { orderFormSchema } from "@/lib/validators";
 
 type Recipe = {
@@ -64,6 +65,8 @@ export default function CuttingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   async function loadData() {
     const [recipeResponse, orderResponse] = await Promise.all([
@@ -111,6 +114,15 @@ export default function CuttingPage() {
       String(order.targetQty),
     ].some((value) => value.toLowerCase().includes(query));
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const paginatedOrders = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return filteredOrders.slice(startIndex, startIndex + pageSize);
+  }, [filteredOrders, currentPage, pageSize]);
 
   async function createOrder(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -260,7 +272,7 @@ export default function CuttingPage() {
                       </td>
                     </tr>
                   ) : (
-                    filteredOrders.map((order) => (
+                    paginatedOrders.map((order) => (
                       <tr key={order.id}>
                         <td className="px-5 py-4 font-semibold">
                           {order.orderNo}
@@ -306,6 +318,22 @@ export default function CuttingPage() {
                   )}
                 </tbody>
               </table>
+              {filteredOrders.length > 0 && (
+                <div className="border-t border-slate-200 px-5 py-3">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalItems={filteredOrders.length}
+                    pageSize={pageSize}
+                    pageSizeOptions={[10, 20, 50]}
+                    onPageChange={setCurrentPage}
+                    onPageSizeChange={(size) => {
+                      setPageSize(size);
+                      setCurrentPage(1);
+                    }}
+                    itemLabel="orders"
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
           <Card>
